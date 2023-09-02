@@ -55,10 +55,12 @@ class GenreSerializer(serializers.ModelSerializer):
 
 
 class TitleSerializer(serializers.ModelSerializer):
+    rating = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Title
-        fields = ('__all__')
+        fields = ('id', 'name', 'year', 'rating', 'description', 'genre',
+                  'category')
 
 
 class CommentSerializer(serializers.ModelSerializer):

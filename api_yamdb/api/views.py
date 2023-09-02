@@ -1,3 +1,4 @@
+from django.db.models import Avg
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets
 
@@ -50,8 +51,11 @@ class GenreViewSet(viewsets.ModelViewSet):
 
 
 class TitleViewSet(viewsets.ModelViewSet):
-    queryset = Title.objects.all()
     serializer_class = TitleSerializer
+
+    def get_queryset(self):
+        queryset = Title.objects.all().annotate(rating=Avg('reviews__score'))
+        return queryset
 
 
 class CommentViewSet(viewsets.ModelViewSet):
