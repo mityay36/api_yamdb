@@ -16,6 +16,7 @@ from reviews.models import Review, Title, Category, Genre, Comment, User
 class ReviewViewSet(viewsets.ModelViewSet):
     serializer_class = ReviewSerializer
     permission_classes = (CanEditOrReadOnly,)
+    http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_title(self):
         return get_object_or_404(
