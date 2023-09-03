@@ -57,6 +57,7 @@ class TitleViewSet(viewsets.ModelViewSet):
 class CommentViewSet(viewsets.ModelViewSet):
     serializer_class = CommentSerializer
     permission_classes = (CanEditOrReadOnly,)
+    http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_review_pk(self):
         return self.kwargs.get('review_id')
