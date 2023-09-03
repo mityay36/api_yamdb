@@ -32,13 +32,16 @@ class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
         fields = ('id', 'text', 'author', 'score', 'pub_date', 'title')
-        read_only_fields = ('pub_date',)
-        validators = [
-            UniqueTogetherValidator(
-                queryset=Review.objects.all(),
-                fields=('title', 'author')
+
+    def validate(self, data):
+        if Review.objects.filter(
+                author=self.context['request'].user,
+                title=self.context.get('view').kwargs.get('title_id')
+        ).exists() and self.context.get('request').method == 'POST':
+            raise serializers.ValidationError(
+                'You cannot leave a second review for this title.'
             )
-        ]
+        return data
 
     def validate_score(self, value):
         if isinstance(value, int) and 1 <= value <= 10:

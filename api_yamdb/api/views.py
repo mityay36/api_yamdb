@@ -22,9 +22,9 @@ from api.mixins import ModelMixinSet
 
 
 class ReviewViewSet(viewsets.ModelViewSet):
-    queryset = Review.objects.all()
     serializer_class = ReviewSerializer
     permission_classes = (CanEditOrReadOnly,)
+    http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_title(self):
         return get_object_or_404(
