@@ -2,6 +2,21 @@ from rest_framework import serializers
 from rest_framework.validators import UniqueTogetherValidator
 
 from reviews.models import Review, Category, Genre, Title, User
+from .permissions import IsAdminOrStaff
+
+
+class GenreField(serializers.SlugRelatedField):
+
+    def to_representation(self, value):
+        serializer = GenreSerializer(value)
+        return serializer.data
+
+
+class CategoryField(serializers.SlugRelatedField):
+
+    def to_representation(self, value):
+        serializer = CategorySerializer(value)
+        return serializer.data
 
 
 class ReviewSerializer(serializers.ModelSerializer):
@@ -17,13 +32,16 @@ class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
         fields = ('id', 'text', 'author', 'score', 'pub_date', 'title')
-        read_only_fields = ('pub_date',)
-        validators = [
-            UniqueTogetherValidator(
-                queryset=Review.objects.all(),
-                fields=('title', 'author')
+
+    def validate(self, data):
+        if Review.objects.filter(
+                author=self.context['request'].user,
+                title=self.context.get('view').kwargs.get('title_id')
+        ).exists() and self.context.get('request').method == 'POST':
+            raise serializers.ValidationError(
+                'You cannot leave a second review for this title.'
             )
-        ]
+        return data
 
     def validate_score(self, value):
         if isinstance(value, int) and 1 <= value <= 10:
@@ -34,6 +52,7 @@ class ReviewSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
+    permission_classes = (IsAdminOrStaff,)
 
     class Meta:
         model = User
@@ -56,6 +75,18 @@ class GenreSerializer(serializers.ModelSerializer):
 
 class TitleSerializer(serializers.ModelSerializer):
     rating = serializers.IntegerField(read_only=True)
+    genre = GenreField(
+        queryset=Genre.objects.all(),
+        slug_field='slug',
+        required=False,
+        many=True
+    )
+    category = CategoryField(
+        queryset=Category.objects.all(),
+        slug_field='slug',
+        required=False
+    )
+
 
     class Meta:
         model = Title
@@ -64,7 +95,17 @@ class TitleSerializer(serializers.ModelSerializer):
 
 
 class CommentSerializer(serializers.ModelSerializer):
+    author = serializers.SlugRelatedField(
+        read_only=True,
+        slug_field='username',
+        default=serializers.CurrentUserDefault()
+    )
+    review = serializers.SlugRelatedField(
+        slug_field='text',
+        read_only=True
+    )
 
     class Meta:
         model = Title
         fields = ('id', 'text', 'author', 'pub_date')
+        read_only_fields = ('pub_date',)
