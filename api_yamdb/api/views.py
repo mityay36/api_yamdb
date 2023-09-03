@@ -1,3 +1,4 @@
+from django.db.models import Avg
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, status
 from django_filters.rest_framework import DjangoFilterBackend
@@ -61,12 +62,15 @@ class GenreViewSet(ModelMixinSet):
 
 
 class TitleViewSet(viewsets.ModelViewSet):
-    queryset = Title.objects.all()
     serializer_class = TitleSerializer
     permission_classes = (CanEditOrReadOnly,)
     filter_backends = (DjangoFilterBackend,)
     ordering_fields = ('name',)
     filterset_class = TitleFilter
+
+    def get_queryset(self):
+        queryset = Title.objects.all().annotate(rating=Avg('reviews__score'))
+        return queryset
 
 
 class CommentViewSet(viewsets.ModelViewSet):

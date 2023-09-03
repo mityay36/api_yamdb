@@ -74,6 +74,7 @@ class GenreSerializer(serializers.ModelSerializer):
 
 
 class TitleSerializer(serializers.ModelSerializer):
+    rating = serializers.IntegerField(read_only=True)
     genre = GenreField(
         queryset=Genre.objects.all(),
         slug_field='slug',
@@ -85,13 +86,12 @@ class TitleSerializer(serializers.ModelSerializer):
         slug_field='slug',
         required=False
     )
-    rating = serializers.IntegerField(
-        required=False
-    )
+
 
     class Meta:
         model = Title
-        fields = ('__all__')
+        fields = ('id', 'name', 'year', 'rating', 'description', 'genre',
+                  'category')
 
 
 class CommentSerializer(serializers.ModelSerializer):
