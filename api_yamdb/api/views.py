@@ -1,7 +1,13 @@
 from django.shortcuts import get_object_or_404
-from rest_framework import viewsets
+from rest_framework import viewsets, status
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import SearchFilter
+from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
-from .permissions import CanEditOrReadOnly
+
+from .permissions import CanEditOrReadOnly, IsAdminOrStaff
 from .serializers import (
     ReviewSerializer,
     GenreSerializer,
@@ -11,12 +17,14 @@ from .serializers import (
     UserSerializer
 )
 from reviews.models import Review, Title, Category, Genre, Comment, User
+from .filters import TitleFilter
+from api.mixins import ModelMixinSet
 
 
 class ReviewViewSet(viewsets.ModelViewSet):
-    queryset = Review.objects.all()
     serializer_class = ReviewSerializer
     permission_classes = (CanEditOrReadOnly,)
+    http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_title(self):
         return get_object_or_404(
@@ -34,24 +42,31 @@ class ReviewViewSet(viewsets.ModelViewSet):
         )
 
 
-class UserViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
-
-
-class CategoryViewSet(viewsets.ModelViewSet):
+class CategoryViewSet(ModelMixinSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
+    permission_classes = (CanEditOrReadOnly,)
+    filter_backends = (SearchFilter,)
+    search_fields = ('name',)
+    lookup_field = 'slug'
 
 
-class GenreViewSet(viewsets.ModelViewSet):
+class GenreViewSet(ModelMixinSet):
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
+    permission_classes = (CanEditOrReadOnly,)
+    filter_backends = (SearchFilter,)
+    search_fields = ('name',)
+    lookup_field = 'slug'
 
 
 class TitleViewSet(viewsets.ModelViewSet):
     queryset = Title.objects.all()
     serializer_class = TitleSerializer
+    permission_classes = (CanEditOrReadOnly,)
+    filter_backends = (DjangoFilterBackend,)
+    ordering_fields = ('name',)
+    filterset_class = TitleFilter
 
 
 class CommentViewSet(viewsets.ModelViewSet):
@@ -78,3 +93,29 @@ class CommentViewSet(viewsets.ModelViewSet):
             author=self.request.user,
             review=review
         )
+
+
+class UserViewSet(viewsets.ModelViewSet):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = (IsAdminOrStaff,)
+    filter_backends = (SearchFilter,)
+    search_fields = ('=username',)
+    lookup_field = 'username'
+    http_method_names = ('get', 'post', 'patch', 'delete')
+
+    @action(
+        methods=('get', 'patch',),
+        detail=False,
+        permission_classes=(IsAuthenticated,)
+    )
+    def me(self, request):
+        if request.method == 'PATCH':
+            serializer = UserSerializer(
+                request.user, data=request.data, partial=True
+            )
+            serializer.is_valid(raise_exception=True)
+            serializer.save(role=request.user.role)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
