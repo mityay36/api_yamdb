@@ -5,6 +5,7 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.tokens import AccessToken
 
 from reviews.models import Category, Comment, Genre, Review, Title, User
+from reviews.validators import validate_title_year
 
 
 class GenreField(serializers.SlugRelatedField):
@@ -88,24 +89,36 @@ class GenreSerializer(serializers.ModelSerializer):
         fields = ('name', 'slug')
 
 
-class TitleSerializer(serializers.ModelSerializer):
-    rating = serializers.IntegerField(read_only=True)
-    genre = GenreField(
-        queryset=Genre.objects.all(),
-        slug_field='slug',
-        required=False,
+class TitleReadSerializer(serializers.ModelSerializer):
+    category = CategorySerializer(read_only=True)
+    genre = GenreSerializer(
+        read_only=True,
         many=True
     )
-    category = CategoryField(
+    rating = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        fields = '__all__'
+        model = Title
+
+
+class TitleWriteSerializer(serializers.ModelSerializer):
+    category = serializers.SlugRelatedField(
         queryset=Category.objects.all(),
+        slug_field='slug'
+    )
+    genre = serializers.SlugRelatedField(
+        queryset=Genre.objects.all(),
         slug_field='slug',
-        required=False
+        many=True
     )
 
     class Meta:
+        fields = '__all__'
         model = Title
-        fields = ('id', 'name', 'year', 'rating', 'description', 'genre',
-                  'category')
+
+    def validate_year(self, value):
+        return validate_title_year(value)
 
 
 class CommentSerializer(serializers.ModelSerializer):

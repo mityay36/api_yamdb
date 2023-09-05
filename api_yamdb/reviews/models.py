@@ -1,19 +1,15 @@
 from django.contrib.auth.base_user import BaseUserManager
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import AbstractUser
-from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from .validators import validate_title_year
 
 CHOICES = (
     ('user', 'Авторизованный пользователь'),
     ('moderator', 'Модератор'),
     ('admin', 'Администратор'),
 )
-
-
-class MyValidator(UnicodeUsernameValidator):
-    regex = r'^[\w.@+-]+\Z'
 
 
 class CustomUserManager(BaseUserManager):
@@ -163,13 +159,16 @@ class Title(models.Model):
     )
 
     year = models.IntegerField(
-        verbose_name='Дата выхода'
+        verbose_name='Дата выхода',
+        validators=(validate_title_year,)
+
     )
 
     genre = models.ManyToManyField(Genre, through='GenreTitle')
     category = models.ForeignKey(
         Category,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
+        null=True,
         verbose_name='Категория',
         default=None
     )
@@ -177,6 +176,9 @@ class Title(models.Model):
     class Meta:
         verbose_name = 'Произведение'
         ordering = ('name',)
+
+    def __str__(self):
+        return self.name
 
 
 class GenreTitle(models.Model):

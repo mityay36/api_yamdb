@@ -15,10 +15,11 @@ from reviews.models import Category, Genre, Review, Title, User
 
 from .filters import TitleFilter
 from .permissions import (AdminOnly, AuthorOrCanEditOrReadOnly,
-                          CanEditOrReadOnly)
+                          IsAdminOrReadOnly)
 from .serializers import (CategorySerializer, CommentSerializer,
                           GenreSerializer, ReviewSerializer, SignUpSerializer,
-                          TitleSerializer, TokenSerializer, UserSerializer)
+                          TitleReadSerializer, TitleWriteSerializer,
+                          TokenSerializer, UserSerializer,)
 
 
 class ReviewViewSet(viewsets.ModelViewSet):
@@ -45,7 +46,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
 class CategoryViewSet(ModelMixinSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    permission_classes = (CanEditOrReadOnly,)
+    permission_classes = (IsAdminOrReadOnly,)
     filter_backends = (SearchFilter,)
     search_fields = ('name',)
     lookup_field = 'slug'
@@ -54,22 +55,25 @@ class CategoryViewSet(ModelMixinSet):
 class GenreViewSet(ModelMixinSet):
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
-    permission_classes = (CanEditOrReadOnly,)
+    permission_classes = (IsAdminOrReadOnly,)
     filter_backends = (SearchFilter,)
     search_fields = ('name',)
     lookup_field = 'slug'
 
 
 class TitleViewSet(viewsets.ModelViewSet):
-    serializer_class = TitleSerializer
-    permission_classes = (CanEditOrReadOnly,)
+    queryset = Title.objects.annotate(
+        rating=Avg('reviews__score')
+    ).all()
+    permission_classes = (IsAdminOrReadOnly,)
     filter_backends = (DjangoFilterBackend,)
-    ordering_fields = ('name',)
     filterset_class = TitleFilter
+    http_method_names = ['get', 'post', 'patch', 'delete']
 
-    def get_queryset(self):
-        queryset = Title.objects.all().annotate(rating=Avg('reviews__score'))
-        return queryset
+    def get_serializer_class(self):
+        if self.action in ('list', 'retrieve'):
+            return TitleReadSerializer
+        return TitleWriteSerializer
 
 
 class CommentViewSet(viewsets.ModelViewSet):
