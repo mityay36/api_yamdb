@@ -1,9 +1,108 @@
-from django.db import models
-from django.contrib.auth import get_user_model
+from django.contrib.auth.base_user import BaseUserManager
+from django.contrib.auth.hashers import make_password
+from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.core.validators import MaxValueValidator, MinValueValidator
+from django.db import models
+
+CHOICES = (
+    ('user', 'Авторизованный пользователь'),
+    ('moderator', 'Модератор'),
+    ('admin', 'Администратор'),
+)
 
 
-User = get_user_model()
+class MyValidator(UnicodeUsernameValidator):
+    regex = r'^[\w.@+-]+\Z'
+
+
+class CustomUserManager(BaseUserManager):
+    def create_user(
+        self,
+        username,
+        email,
+        password='',
+        bio='',
+        role='user',
+        first_name='',
+        last_name=''
+    ):
+        if username is None:
+            raise TypeError('Users must have a username.')
+
+        if email is None:
+            raise TypeError('Users must have an email address.')
+
+        user = self.model(
+            username=username,
+            email=self.normalize_email(email),
+            confirmation_code=self.make_random_password(length=12),
+            password=password,
+            role=role,
+            bio=bio,
+            first_name=first_name,
+            last_name=last_name
+        )
+        user.save()
+
+        return user
+
+    def create_superuser(
+        self,
+        username,
+        email,
+        password=None,
+        bio='',
+        role='admin',
+        first_name='',
+        last_name=''
+    ):
+        if password is None:
+            raise TypeError('Superusers must have a password.')
+
+        user = self.create_user(
+            username=username,
+            email=email,
+            password=make_password(password),
+            role=role,
+            bio=bio,
+            first_name=first_name,
+            last_name=last_name
+        )
+        user.is_superuser = True
+        user.is_staff = True
+        user.email_user(
+            subject='confirmation_code',
+            message=user.confirmation_code,
+            fail_silently=False
+        )
+        user.save()
+
+        return user
+
+
+class User(AbstractUser):
+
+    email = models.EmailField(unique=True, max_length=254)
+    confirmation_code = models.CharField(max_length=12)
+    role = models.CharField(choices=CHOICES, max_length=128, default='user')
+    bio = models.TextField(blank=True)
+
+    objects = CustomUserManager()
+
+    def __str__(self):
+        return self.username
+
+    class Meta:
+        ordering = ['-date_joined']
+
+    @property
+    def is_admin(self):
+        return self.role == 'admin' or self.is_staff or self.is_superuser
+
+    @property
+    def is_moderator(self):
+        return self.role == 'moderator'
 
 
 class Category(models.Model):
@@ -52,12 +151,12 @@ class Genre(models.Model):
 class Title(models.Model):
 
     name = models.CharField(
-        max_length=150,
+        max_length=256,
         verbose_name='Название',
         db_index=True
     )
 
-    descriprion = models.TextField(
+    description = models.TextField(
         null=True,
         blank=True,
         verbose_name='Описание'
@@ -67,9 +166,12 @@ class Title(models.Model):
         verbose_name='Дата выхода'
     )
 
-    genre = models.ManyToManyField(
-        Genre,
-        verbose_name='Жанр'
+    genre = models.ManyToManyField(Genre, through='GenreTitle')
+    category = models.ForeignKey(
+        Category,
+        on_delete=models.CASCADE,
+        verbose_name='Категория',
+        default=None
     )
 
     class Meta:
@@ -78,14 +180,15 @@ class Title(models.Model):
 
 
 class GenreTitle(models.Model):
+    genre = models.ForeignKey(
+        Genre,
+        on_delete=models.CASCADE
+    )
     title = models.ForeignKey(
         Title,
         on_delete=models.CASCADE,
         verbose_name='Жанр',
     )
-
-    def __str__(self):
-        return self.name
 
 
 class Review(models.Model):
@@ -166,7 +269,7 @@ class Comment(models.Model):
 
     class Meta:
         verbose_name = 'Комментарий'
-        ordering = ('pub_date',)
+        ordering = ('-pub_date',)
 
     def __str__(self):
         return self.text
