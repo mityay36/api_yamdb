@@ -13,20 +13,12 @@ from api.mixins import ModelMixinSet, SignUpMixinSet
 from reviews.models import Category, Genre, Review, Title, User
 
 from .filters import TitleFilter
-from .permissions import (AdminOnly,
-                          AuthorOrCanEditOrReadOnly,
+from .permissions import (AdminOnly, AuthorOrCanEditOrReadOnly,
                           IsAdminOrReadOnly)
-from .serializers import (
-    CategorySerializer,
-    CommentSerializer,
-    GenreSerializer,
-    ReviewSerializer,
-    SignUpSerializer,
-    TitleReadSerializer,
-    TitleWriteSerializer,
-    TokenSerializer,
-    UserSerializer,
-)
+from .serializers import (CategorySerializer, CommentSerializer,
+                          GenreSerializer, ReviewSerializer, SignUpSerializer,
+                          TitleReadSerializer, TitleWriteSerializer,
+                          TokenSerializer, UserSerializer)
 
 
 class ReviewViewSet(viewsets.ModelViewSet):

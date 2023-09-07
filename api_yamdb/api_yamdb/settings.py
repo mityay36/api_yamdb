@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     "django_filters",
     "api",
     "reviews",
+    "users",
 ]
 
 MIDDLEWARE = [
@@ -125,7 +126,7 @@ AUTHENTICATION_BACKENDS = (
     "core.custom_auth.AuthenticationWithoutPassword",
 )
 
-AUTH_USER_MODEL = "reviews.User"
+AUTH_USER_MODEL = "users.User"
 
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = "smtp.gmail.com"
